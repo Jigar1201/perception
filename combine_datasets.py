@@ -2,7 +2,7 @@ import os
 import json
 import cv2
 
-datasets_dir = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/combine_datasets"
+datasets_dir = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/perception/souvenir_dataset"
 
 image_counter = 0
 final_dataset_dir = os.path.join(datasets_dir,"final_dataset")
@@ -21,9 +21,10 @@ final_labels = {}
 for dataset_path in os.listdir(datasets_dir):
     if "final" not in dataset_path:
         dataset = os.path.join(datasets_dir,dataset_path)
-        labelled_images = os.path.join(dataset,"drop_box_dataset","train","labelled_images")
-        original_images = os.path.join(dataset,"drop_box_dataset","train","original_images")
-        labels_file = os.path.join(dataset,"drop_box_dataset","train","labels.json")
+        print(dataset)
+        labelled_images = os.path.join(dataset,"train","labelled_images")
+        original_images = os.path.join(dataset,"train","original_images")
+        labels_file = os.path.join(dataset,"train","labels.json")
         print("labels_file : ",labels_file)
         print("labelled_images : ",labelled_images)
         print("original_images : ",original_images)
