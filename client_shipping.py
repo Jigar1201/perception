@@ -31,7 +31,7 @@ class CocoTrainer(DefaultTrainer):
 
 cfg = get_cfg()
 cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml"))
-cfg.DATASETS.TRAIN = ("dropbox_train_dataset",)
+cfg.DATASETS.TRAIN = ("staplebox_train_dataset",)
 cfg.DATASETS.TEST = ()
 
 cfg.DATALOADER.NUM_WORKERS = 1
@@ -54,21 +54,16 @@ os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 # trainer = CocoTrainer(cfg)
 # trainer.resume_or_load(resume=False)
 
-print("starting to train")
+print("not training")
+# print("starting to training")
 # trainer.train()
-
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 
-cfg.MODEL.WEIGHTS = "model_final.pth"
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.85
-
+cfg.MODEL.WEIGHTS = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/staple_box/final_dataset/model_final.pth"
+cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5   # set the testing threshold for this model
 predictor = DefaultPredictor(cfg)
-
-cfg.MODEL.WEIGHTS = "model_final.pth"
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set the testing threshold for this model
-predictor = DefaultPredictor(cfg)
-test_metadata = MetadataCatalog.get("dropbox_train_dataset")
+test_metadata = MetadataCatalog.get("staplebox_val_dataset")
 
 from detectron2.utils.visualizer import ColorMode
 import glob
@@ -82,9 +77,10 @@ import numpy as np
 import struct ## new
 import zlib
 
+iter = 0
 while True:
     HOST = ''
-    PORT = 8485
+    PORT = 8486
     s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     print('Socket created')
@@ -94,7 +90,7 @@ while True:
     s.listen(10)
     print('Socket now listening')
 
-    conn,addr=s.accept()
+    conn, addr = s.accept()
 
     data = b""
     payload_size = struct.calcsize(">L")
@@ -117,8 +113,19 @@ while True:
     frame=pickle.loads(frame_data, fix_imports=True, encoding="bytes")
     frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
+    print("Received image")
+    cv2.imwrite("received_image_shipping.jpg",frame)
+    im_rgb = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    
     outputs = predictor(frame)
-    print("Outputs : ",outputs)
+    v = Visualizer(im_rgb[:, :, ::-1],
+                metadata=test_metadata, 
+                scale=0.8)
+    out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
+    image = out.get_image()[:, :, ::-1]
+    write_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(f"results/predictions_{iter}.jpg",write_image)
+    iter += 1
     preds = outputs['instances'].get_fields()['pred_boxes'].tensor.cpu().numpy()
     scores = outputs['instances'].get_fields()['scores'].cpu().numpy()
     classes = outputs['instances'].get_fields()['pred_classes'].cpu().numpy()
@@ -127,21 +134,20 @@ while True:
     results.append(preds)
     results.append(scores)
     results.append(classes)
-
+    print('results : ',results)
+    
     from pdb import set_trace as bp
     
     # IP ADDRESS
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    client_socket.connect(('172.26.171.22', 8485))
+    client_socket.connect(('172.26.171.22', 8486))
     connection = client_socket.makefile('wb')
     
     img_counter = 0
 
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
-    # result, frame = cv2.imencode('.jpg', frame, encode_param)
-    #    data = zlib.compress(pickle.dumps(frame, 0))
     data = pickle.dumps(results, 0)
     size = len(data)
     client_socket.sendall(struct.pack(">L", size) + data)

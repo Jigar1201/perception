@@ -43,10 +43,10 @@ cfg.SOLVER.MAX_ITER = 1000 #adjust up if val mAP is still rising, adjust down if
 cfg.SOLVER.STEPS = [] #(1000, 1500)
 cfg.SOLVER.GAMMA = 0.05
 
-cfg.OUTPUT_DIR = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project"
+cfg.OUTPUT_DIR = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/datasets_final/souvenir_dataset_1/souvenir_dataset/final_dataset/output_dir"
 
 cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 64
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 5 #your number of classes + 1
+cfg.MODEL.ROI_HEADS.NUM_CLASSES = 13 #your number of classes + 1
 cfg.TEST.EVAL_PERIOD = 500
 
 os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
@@ -59,10 +59,10 @@ print("starting to train")
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 
-model_path = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/perception/output_picking_objects/model_final.pth"
+model_path = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/datasets_final/souvenir_dataset_1/souvenir_dataset/final_dataset/output_dir/model_final.pth"
 
 cfg.MODEL.WEIGHTS = model_path
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.85
+cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.6
 predictor = DefaultPredictor(cfg)
 test_metadata = MetadataCatalog.get("picking_train_dataset")
 
@@ -78,6 +78,9 @@ import numpy as np
 import struct ## new
 import zlib
 
+from pdb import set_trace as bp
+
+iter = 0
 while True:
     HOST = ''
     PORT = 8485
@@ -113,12 +116,24 @@ while True:
     frame=pickle.loads(frame_data, fix_imports=True, encoding="bytes")
     frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
-    outputs = predictor(frame)
+    print("Received image")
+    cv2.imwrite("received_image.jpg",frame)
+    im_rgb = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    cv2.imwrite("received_image_bgr.jpg",im_rgb)
+
+    outputs = predictor(im_rgb)
+    v = Visualizer(im_rgb[:, :, ::-1],
+                metadata=test_metadata, 
+                scale=0.8)
+    out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
+    image = out.get_image()[:, :, ::-1]
+    write_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    cv2.imwrite("predictions.jpg", write_image)
     print("Outputs : ",outputs)
     preds = outputs['instances'].get_fields()['pred_boxes'].tensor.cpu().numpy()
     scores = outputs['instances'].get_fields()['scores'].cpu().numpy()
     classes = outputs['instances'].get_fields()['pred_classes'].cpu().numpy()
-
+    
     results = []
     results.append(preds)
     results.append(scores)

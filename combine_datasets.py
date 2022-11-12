@@ -2,7 +2,7 @@ import os
 import json
 import cv2
 
-datasets_dir = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/perception/souvenir_dataset"
+datasets_dir = "/media/jigar/A4F2A156F2A12D8C/CMU/SEM_3/project/staple_box"
 
 image_counter = 0
 final_dataset_dir = os.path.join(datasets_dir,"final_dataset")
